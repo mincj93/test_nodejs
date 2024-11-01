@@ -1,20 +1,25 @@
-const express = require('express')
+const express = require('express');
+const { MongoClient } = require('mongodb');
+const mongoose = require('mongoose');
+
+
 const app = express();
-const { MongoClient } = require('mongodb')
-
-
+app.set('view engine', 'ejs')
 
 
 let db;
 const id = encodeURIComponent("mincj93");
 const pw = encodeURIComponent("AlsCkd!@34");
 
-const url = `mongodb+srv://${id}:${pw}@cluster0.xuzu2.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`
-new MongoClient(url).connect().then((client) => {
-    console.log('DB연결성공')
-    db = client.db('forum')
+const url = `mongodb+srv://${id}:${pw}@cluster0.xuzu2.mongodb.net/forum?retryWrites=true&w=majority&appName=Cluster0`
+mongoose.connect(url).then((result) => {
+    console.log('데이터베이스 연결 성공');
+
+    app.listen(8080, () => {
+        console.log('http://localhost:8080 에서 서버 실행중')
+    })
 }).catch((err) => {
-    console.log(err)
+    console.log('데이터베이스 연결 실패', err);
 })
 
 
@@ -46,8 +51,6 @@ app.get('/news', () => {
 app.get('/test', (요청, 응답) => {
     응답.send('테스트입니다.')
 })
-
-
-app.listen(8080, () => {
-    console.log('http://localhost:8080 에서 서버 실행중')
+app.get('/list', (요청, 응답) => {
+    응답.render('list.ejs')
 })
