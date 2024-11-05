@@ -1,2 +1,18 @@
-- __dirname
+*** __dirname
 __dirname이라고 쓰면 해당 페이지의 절대경로가 나온다.
+
+*** express.static
+>> static 경로등록한 파일의 위치를 기준으로 public 이라는 폴더를 static 폴더로 등록하겠다고 선언하는 것.
+
+1. express 선언
+const express = require('express');
+
+2. express 사용등록
+const app = express();
+
+3. static 경로 등록
+app.use(express.static(__dirname + '/public'));
+
+>> 사용 효과는 css 파일, 이미지파일 등등 정적인 파일들을 찾을 때 기본적으로 public 이라는 폴더를 붙여서 사용하게 된다.
+따라서 public 이라는 명칭으로 폴더를 만들지 않더라도 등록하려는 폴더명의 위치와 명을 기입하면 static 폴더로 사용 가능.
+

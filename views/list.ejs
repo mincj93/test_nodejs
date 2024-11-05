@@ -4,21 +4,25 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- <link rel="stylesheet" href="/main.css" type="text/css"> -->
+    <link rel="stylesheet" href="/index/list.css" type="text/css">
     <title>Document</title>
 </head>
 
 <body class="grey-bg">
+    <%- include('nav.ejs') %>
+        <div class="white-bg">
+            <div class="list-box">
+                <h4>글제목임</h4>
+                <p>글내용임</p>
+            </div>
+            <div class="list-box">
+                <h4>글제목임</h4>
+                <p>글내용임</p>
+            </div>
+        </div>
 
-    <div class="white-bg">
-        <div class="list-box">
-            <h4>글제목임</h4>
-            <p>글내용임</p>
-        </div>
-        <div class="list-box">
-            <h4>글제목임</h4>
-            <p>글내용임</p>
-        </div>
-    </div>
+        <%= JSON.stringify(글목록) %>
 
 </body>
 
