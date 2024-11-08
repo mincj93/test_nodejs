@@ -69,10 +69,24 @@ app.get('/time', (req, res) => {
     res.render('time.ejs', { data: new Date(), now: now })
 })
 app.get('/detail/:id', async (요청, 응답) => {
-    lg('요청 == ', 요청);
+    // lg('요청 == ', 요청);
     lg('요청.params == ', 요청.params);
     let result = await db.collection('post').findOne({ _id: new ObjectId(요청.params.id) })
-    응답.render('detail.ejs', { result: result })
+    if (result == null) {
+        응답.status(400).send('그런 글 없음')
+    } else {
+        응답.render('detail.ejs', { result: result })
+    }
+})
+app.get('/edit/:id', async (요청, 응답) => {
+    // lg('요청 == ', 요청);
+    lg('요청.params == ', 요청.params);
+    let result = await db.collection('post').findOne({ _id: new ObjectId(요청.params.id) })
+    if (result == null) {
+        응답.status(400).send('그런 글 없음')
+    } else {
+        응답.render('edit.ejs', { result: result })
+    }
 })
 
 // -------------------------------------------------------------------
@@ -85,6 +99,19 @@ app.post('/add', async (요청, 응답) => {
         응답.redirect('/write')
     }
 })
+
+app.post('/edit/:id', async (요청, 응답) => {
+    if (요청.body.title == '' || 요청.body.content == '') {
+        응답.send('제목 내용 둘 다 채워야함')
+    } else {
+        // 몽고디비 업데이트하는 방법 >> db.collection('post').updateOne( {수정할document정보}, {$set: {덮어쓸내용}})
+
+        await db.collection('post').updateOne({ _id: new ObjectId(요청.params.id) }, { $set: { title: 요청.body.title, content: 요청.body.content } })
+        응답.redirect(`/detail/${요청.params.id}`)
+    }
+})
+
+
 app.post('/addtc', async (요청, 응답) => {
     if (요청.body.title == '') {
         lg('title 없음')
