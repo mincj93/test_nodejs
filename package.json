@@ -15,6 +15,7 @@
     "dayjs": "^1.11.13",
     "ejs": "^3.1.10",
     "express": "^4.21.1",
+    "method-override": "^3.0.0",
     "mongodb": "^5.9.2",
     "mongoose": "^8.8.0",
     "node": "^21.7.1"

@@ -4,6 +4,7 @@ const dayjs = require('dayjs');
 const express = require('express');
 const { MongoClient, ObjectId } = require('mongodb');
 const mongoose = require('mongoose');
+const methodOverride = require('method-override') // 메소드 요청 방법 변경 모듈
 
 // ------------------------------------------------------------------- 
 // 기본 정의
@@ -16,6 +17,7 @@ app.set('view engine', 'ejs')
 app.use(express.static(__dirname + '/public')); // css 나 이미지를 찾을 때 public 이라는 경로를 추가해주지 않아도 찾을 수 있음. 기본적으로 public 이라는 경로명이 붙으므로 하위 경로만 적어주면 됨
 app.use(express.json())
 app.use(express.urlencoded({ extended: true }))
+app.use(methodOverride('_method'))
 
 let db;
 const id = encodeURIComponent("mincj93");
@@ -97,6 +99,15 @@ app.post('/add', async (요청, 응답) => {
     } else {
         await db.collection('post').insertOne({ title: 요청.body.title, content: 요청.body.content })
         응답.redirect('/write')
+    }
+})
+
+app.post('/delete/:id', async (요청, 응답) => {
+    try {
+        await db.collection('post').deleteOne({ _id: new ObjectId(요청.params.id) })
+        응답.redirect('/list')
+    } catch (error) {
+        응답.send('잘못된 삭제요청입니다.')
     }
 })
 

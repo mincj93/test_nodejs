@@ -18,7 +18,40 @@ app.use(express.static(__dirname + '/public'));
 
 *** app.use(express.json())
 *** app.use(express.urlencoded({extended:true}))
-유저가 데이터를 보내면 그걸 꺼내쓰는 코드가 좀 귀찮게 되어있는데
-그걸 요청.body로 쉽게 꺼내쓸 수 있게 도와주는 코드
+>> 유저가 데이터를 보내면 그걸 꺼내쓰는 코드가 좀 귀찮게 되어있는데 그걸 요청.body로 쉽게 꺼내쓸 수 있게 도와주는 코드
 
 *** URL 파라미터 문법
+>> 아래와 같이 " :id " 를 사용하면 화면의 url 입력창에 :id 자리에 원하는 값을 입력하면 된다.
+app.get('/edit/:id', async (요청, 응답) => {
+    // lg('요청 == ', 요청);
+    lg('요청.params == ', 요청.params);
+    let result = await db.collection('post').findOne({ _id: new ObjectId(요청.params.id) })
+    if (result == null) {
+        응답.status(400).send('그런 글 없음')
+    } else {
+        응답.render('edit.ejs', { result: result })
+    }
+})
+
+*** method-override
+>> form태그 메소드 지정 모듈(HTML 에서만 적용할 수 있는듯?)
+npm install method-override 로 모듈 설치 후, 서버에
+const methodOverride = require('method-override')
+app.use(methodOverride('_method')) 
+이렇게 두가지를 설정하여 메소드 지정하여 호출하게 할 수 있음.
+
+화면 코드에는 아래와 같이 action="/edit?_method=PUT" 하여 post 메소드를 put 메소드로 호출할 수 있다.
+<form action="/edit?_method=PUT" method="POST"> </form> 
+주의!! method="POST" 는 고정값이다
+
+*** fetch
+>> query string으로 서버에 데이터 전송하기위해 사용.
+>> fetch() 를 쓰면 서버로 GET, POST, PUT, DELETE 요청을 할 수 있는데, 새로고침 없이 몰래 할 수 있다. AJAX라고 함
+
+fetch('/URL~~', {
+  method : 'POST',
+  headers : { 'Content-Type' : 'application/json' },
+  body : JSON.stringify({a : 1})
+})
+
+주의! array, object 를 그냥 넣으면 깨지기 때문에 JSON.stringify() 를 써서 문자형태로 (JSON형태로) 바꿔서 전송해야 잘 감.
