@@ -41,8 +41,9 @@ MongoClient.connect(url, {
 
 // -------------------------------------------------------------------
 // get 방식 요청들
-app.get('/', (req, res) => {
-    res.send('반갑다')
+app.get('/', async (req, res) => {
+    let result = await db.collection('post').find().toArray()
+    res.render('list.ejs', { 글목록: result })
 })
 app.get('/main', (req, res) => {
     res.sendFile(__dirname + "/index.html")
@@ -59,8 +60,9 @@ app.get('/news', () => {
 app.get('/test', (req, res) => {
     res.send('테스트입니다.')
 })
-app.get('/list', async (req, res) => {
-    let result = await db.collection('post').find().toArray()
+app.get('/list/:listId', async (req, res) => {
+    let result = await db.collection('post').find()
+        .skip((req.params.listId - 1) * 2).limit(2).toArray()
     res.render('list.ejs', { 글목록: result })
 })
 app.get('/write', async (req, res) => {
