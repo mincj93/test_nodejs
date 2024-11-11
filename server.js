@@ -6,6 +6,11 @@ const { MongoClient, ObjectId } = require('mongodb');
 const mongoose = require('mongoose');
 const methodOverride = require('method-override') // 메소드 요청 방법 변경 모듈
 
+// 로그인 관련 모듈 3개. (회원인증)
+const session = require('express-session')
+const passport = require('passport')
+const LocalStrategy = require('passport-local')
+
 // ------------------------------------------------------------------- 
 // 기본 정의
 const app = express();
@@ -18,6 +23,55 @@ app.use(express.static(__dirname + '/public')); // css 나 이미지를 찾을 �
 app.use(express.json())
 app.use(express.urlencoded({ extended: true }))
 app.use(methodOverride('_method'))
+
+// 회원인증에 쓸 모듈 아래 3개 순서도 중요함
+app.use(passport.initialize())
+app.use(session({
+    secret: '1234', // 개별 비번 잘 넣어주면 됩니다. 세션문자열같은거 암호화할 때 쓰는데 긴게 좋습니다. 털리면 인생 끝남
+    resave: false, // 유저가 요청날릴 때 마다 session데이터를 다시 갱신할건지 여부 (false 추천)
+    saveUninitialized: false // 유저가 로그인 안해도세션을 저장해둘지 여부 (false 추천)
+}))
+app.use(passport.session({
+    secret: '어쩌구',
+    resave: false,
+    saveUninitialized: false,
+    cookie: { maxAge: 60 * 60 * 1000 }
+}))
+
+// passport 라이브러리 설정
+// 이 코드 하단에 API들을 만들어야 그 API들은 로그인관련 기능들이 잘 작동합니다.
+passport.use(new LocalStrategy(async (입력한아이디, 입력한비번, cb) => {
+    lg('입력한아이디 == ', 입력한아이디)
+    lg('입력한비번 == ', 입력한비번);
+    let result = await db.collection('user_account').findOne({ username: 입력한아이디 })
+    if (!result) {
+        return cb(null, false, { message: '아이디 DB에 없음' })
+    }
+    if (result.password == 입력한비번) {
+        return cb(null, result)
+    } else {
+        return cb(null, false, { message: '비번불일치' });
+    }
+}))
+
+// 로그인 성공할 때 마다 자동으로 세션이 만들어짐
+passport.serializeUser((user, done) => {
+    process.nextTick((e) => { // nextTick : 비동기적으로 처리하고 싶을 때 쓰는 문법. process.nextTick 안에 있는 코드는 처리를 살짝 보류시키고 다른 작업들이 끝나면 실행시켜줌
+        lg('user._id == ', user._id);
+        lg('user.password == ', user.password)
+        done(null, { id: user._id, password: user.password })
+    })
+})
+
+// 로그인 유지되고 있는지 여부를 판단
+passport.deserializeUser((user, done) => {
+    process.nextTick(() => {
+        return done(null, user)
+    })
+    //저가 요청날릴 때 마다 쿠키에 뭐가 있으면 그걸 까서 세션데이터랑 비교해보고 
+    //별 이상이 없으면 현재 로그인된 유저정보를 모든 API의 "요청.user"에 담아줍니다
+})
+
 
 let db;
 const id = encodeURIComponent("mincj93");
@@ -61,6 +115,9 @@ app.get('/test', (req, res) => {
     res.send('테스트입니다.')
 })
 app.get('/list/:listId', async (req, res) => {
+
+    lg(req.user)
+
     let result = await db.collection('post').find()
         .skip((req.params.listId - 1) * 2).limit(2).toArray()
     res.render('list.ejs', { 글목록: result })
@@ -72,65 +129,69 @@ app.get('/time', (req, res) => {
     let now = dayjs().format("YYYY MM DD");
     res.render('time.ejs', { data: new Date(), now: now })
 })
-app.get('/detail/:id', async (요청, 응답) => {
-    // lg('요청 == ', 요청);
-    lg('요청.params == ', 요청.params);
-    let result = await db.collection('post').findOne({ _id: new ObjectId(요청.params.id) })
+app.get('/detail/:id', async (req, res) => {
+    // lg('req == ', req);
+    lg('req.params == ', req.params);
+    let result = await db.collection('post').findOne({ _id: new ObjectId(req.params.id) })
     if (result == null) {
-        응답.status(400).send('그런 글 없음')
+        res.status(400).send('그런 글 없음')
     } else {
-        응답.render('detail.ejs', { result: result })
+        res.render('detail.ejs', { result: result })
     }
 })
-app.get('/edit/:id', async (요청, 응답) => {
-    // lg('요청 == ', 요청);
-    lg('요청.params == ', 요청.params);
-    let result = await db.collection('post').findOne({ _id: new ObjectId(요청.params.id) })
+app.get('/edit/:id', async (req, res) => {
+    // lg('req == ', req);
+    lg('req.params == ', req.params);
+    let result = await db.collection('post').findOne({ _id: new ObjectId(req.params.id) })
     if (result == null) {
-        응답.status(400).send('그런 글 없음')
+        res.status(400).send('그런 글 없음')
     } else {
-        응답.render('edit.ejs', { result: result })
+        res.render('edit.ejs', { result: result })
     }
+})
+
+app.get('/login', (req, res) => {
+    res.render('login.ejs')
 })
 
 // -------------------------------------------------------------------
-// post 방식 요청들
-app.post('/add', async (요청, 응답) => {
-    if (요청.body.title == '') {
-        응답.send('제목안적었는데')
+// post 방식 req들
+app.post('/add', async (req, res) => {
+    if (req.body.title == '') {
+        res.send('제목안적었는데')
     } else {
-        await db.collection('post').insertOne({ title: 요청.body.title, content: 요청.body.content })
-        응답.redirect('/write')
+        await db.collection('post').insertOne({ title: req.body.title, content: req.body.content })
+        res.redirect('/write')
     }
 })
 
-app.post('/delete/:id', async (요청, 응답) => {
+app.post('/delete/:id', async (req, res) => {
     try {
-        await db.collection('post').deleteOne({ _id: new ObjectId(요청.params.id) })
-        응답.redirect('/list')
+        await db.collection('post').deleteOne({ _id: new ObjectId(req.params.id) })
+        res.redirect('/list')
     } catch (error) {
-        응답.send('잘못된 삭제요청입니다.')
+        res.send('잘못된 삭제요청입니다.')
     }
 })
 
-app.post('/edit/:id', async (요청, 응답) => {
-    if (요청.body.title == '' || 요청.body.content == '') {
-        응답.send('제목 내용 둘 다 채워야함')
+app.post('/edit/:id', async (req, res) => {
+    if (req.body.title == '' || req.body.content == '') {
+        res.send('제목 내용 둘 다 채워야함')
     } else {
         // 몽고디비 업데이트하는 방법 >> db.collection('post').updateOne( {수정할document정보}, {$set: {덮어쓸내용}})
 
-        await db.collection('post').updateOne({ _id: new ObjectId(요청.params.id) }, { $set: { title: 요청.body.title, content: 요청.body.content } })
-        응답.redirect(`/detail/${요청.params.id}`)
+        await db.collection('post').updateOne({ _id: new ObjectId(req.params.id) }, { $set: { title: req.body.title, content: req.body.content } })
+        res.redirect(`/detail/${req.params.id}`)
     }
 })
 
 
-app.post('/addtc', async (요청, 응답) => {
-    if (요청.body.title == '') {
+app.post('/addtc', async (req, res) => {
+    if (req.body.title == '') {
         lg('title 없음')
         return;
     }
-    if (요청.body.content == '') {
+    if (req.body.content == '') {
         lg('content 없음')
         return;
     }
@@ -138,14 +199,27 @@ app.post('/addtc', async (요청, 응답) => {
 
     try {
         let insertData = {};
-        const bodyData = 요청.body;
+        const bodyData = req.body;
         insertData = { title: bodyData.title, content: bodyData.content };
         await db.collection('testCollection').insertOne(insertData)
-        응답.redirect('/write')
+        res.redirect('/write')
     } catch (error) {
 
-        응답.send('testCollection')
+        res.send('testCollection')
     }
 
 
 })
+
+app.post('/login', async (req, res, next) => {
+    // 제출한아이디/비번이 DB에 있는거랑 일치하는지 확인하고 세션생성
+    passport.authenticate('local', (error, user, info) => {
+        lg(user, info)
+        if (error) return res.status(500).json(error)
+        if (!user) return res.status(401).json(info.message)
+        req.logIn(user, (err) => {
+            if (err) return next(err)
+            res.redirect('/')
+        })
+    })(req, res, next)
+}) 
