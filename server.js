@@ -5,6 +5,7 @@ const express = require('express');
 const { MongoClient, ObjectId } = require('mongodb');
 const mongoose = require('mongoose');
 const methodOverride = require('method-override') // 메소드 요청 방법 변경 모듈
+const bcrypt = require('bcrypt')
 
 // 로그인 관련 모듈 3개. (회원인증)
 const session = require('express-session')
@@ -43,10 +44,13 @@ app.use(passport.session({
 passport.use(new LocalStrategy(async (입력한아이디, 입력한비번, cb) => {
     lg('입력한아이디 == ', 입력한아이디)
     lg('입력한비번 == ', 입력한비번);
+
     let result = await db.collection('user_account').findOne({ username: 입력한아이디 })
     if (!result) {
         return cb(null, false, { message: '아이디 DB에 없음' })
     }
+    // await bcrypt.compare(입력값,  조회된 hash값) 이렇게 하면 조회된hash값과 입력값을 hash로 변환해 비교해준다.
+    await bcrypt.compare(입력한비번,  result.password)
     if (result.password == 입력한비번) {
         return cb(null, result)
     } else {
@@ -65,6 +69,7 @@ passport.serializeUser((user, done) => {
 
 // 로그인 유지되고 있는지 여부를 판단
 passport.deserializeUser((user, done) => {
+    lg("deserializeUser user == ", user)
     process.nextTick(() => {
         return done(null, user)
     })
@@ -96,8 +101,9 @@ MongoClient.connect(url, {
 // -------------------------------------------------------------------
 // get 방식 요청들
 app.get('/', async (req, res) => {
-    let result = await db.collection('post').find().toArray()
-    res.render('list.ejs', { 글목록: result })
+    // let result = await db.collection('post').find().toArray()
+    // res.render('list.ejs', { 글목록: result })
+    res.redirect(`/list/${1}`);
 })
 app.get('/main', (req, res) => {
     res.sendFile(__dirname + "/index.html")
@@ -114,14 +120,39 @@ app.get('/news', () => {
 app.get('/test', (req, res) => {
     res.send('테스트입니다.')
 })
-app.get('/list/:listId', async (req, res) => {
 
-    lg(req.user)
+app.get('/list', async (req, res) => {
+    res.redirect(`/list/${1}`);
+});
+
+app.get('/list/:listId', async (req, res) => {
 
     let result = await db.collection('post').find()
         .skip((req.params.listId - 1) * 2).limit(2).toArray()
     res.render('list.ejs', { 글목록: result })
 })
+
+// 페이징 삽입된 API
+// app.get('/list/:listId', async (req, res) => {
+
+//     const listId = parseInt(req.params.listId);
+//     const postsPerPage = 2; // 페이지당 게시글 수
+//     const totalPosts = await db.collection('post').countDocuments();
+//     const totalPages = Math.ceil(totalPosts / postsPerPage);
+
+//     let posts = await db.collection('post')
+//         .find()
+//         .skip((listId - 1) * postsPerPage)
+//         .limit(postsPerPage)
+//         .toArray();
+
+//     res.render('list.ejs', {
+//         글목록: posts,
+//         currentPage: listId,
+//         totalPages: totalPages
+//     });
+// })
+
 app.get('/write', async (req, res) => {
     res.render('write.ejs')
 })
@@ -153,6 +184,12 @@ app.get('/edit/:id', async (req, res) => {
 app.get('/login', (req, res) => {
     res.render('login.ejs')
 })
+
+app.get('/register', (요청, 응답) => {
+    응답.render('register.ejs')
+})
+
+
 
 // -------------------------------------------------------------------
 // post 방식 req들
@@ -214,7 +251,7 @@ app.post('/addtc', async (req, res) => {
 app.post('/login', async (req, res, next) => {
     // 제출한아이디/비번이 DB에 있는거랑 일치하는지 확인하고 세션생성
     passport.authenticate('local', (error, user, info) => {
-        lg(user, info)
+        lg('login user == ', user, 'req.user == ', req.user)
         if (error) return res.status(500).json(error)
         if (!user) return res.status(401).json(info.message)
         req.logIn(user, (err) => {
@@ -222,4 +259,17 @@ app.post('/login', async (req, res, next) => {
             res.redirect('/')
         })
     })(req, res, next)
-}) 
+})
+
+app.post('/register', async (요청, 응답) => {
+    // await bcrypt.hash(원하는 문자, 문자열꼬는 강도)
+    const hash = await bcrypt.hash(요청.body.password, 10);
+    lg('요청.body.password = ', 요청.body.password, 'hash 변환값 = ', hash)
+
+
+    await db.collection('user_account').insertOne({
+        username: 요청.body.username,
+        password: hash
+    })
+    응답.redirect('/')
+})

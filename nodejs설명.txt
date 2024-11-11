@@ -89,3 +89,6 @@ DB에 { 유저의 아이디, 로그인 날짜, 유효기간, session id } 이런
 passport는 회원인증 도와주는 메인라이브러리
 passport-local은 아이디/비번 방식 회원인증 쓸 때 쓰는 라이브러리
 express-session은 세션 만드는거 도와주는 라이브러리
+
+*** bcrypt
+> 비밀번호 같은 중요한 것들을 hashing 하는 것.

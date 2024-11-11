@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- <link rel="stylesheet" href="/main.css" type="text/css"> -->
+    <link rel="stylesheet" href="/index/list.css" type="text/css">
+    <title>Document</title>
+</head>
+
+<body class="grey-bg">
+    <%- include('nav.ejs') %>
+        <div class="white-bg">
+            <div class="list-box">
+                <h4>글제목임</h4>
+                <p>글내용임</p>
+            </div>
+            <div class="list-box">
+                <h4>글제목임</h4>
+                <p>글내용임</p>
+            </div>
+        </div>
+
+
+        <% for (let i=0; i < 글목록.length; i++){ %>
+
+            <div class="white-box">
+                <div class="list-box">
+                    <h4>
+                        <a href="/detail/<%= 글목록[i]._id %>">
+                            <%= 글목록[i].title %>
+                        </a>
+                    </h4>
+                    <p>
+                        <%=글목록[i].content %>
+                    </p>
+                </div>
+
+                <% } %>
+
+                // EJS 템플릿 (list.ejs)
+                <div class="pagination">
+                    <% for (let i = 1; i <= totalPages; i++) { %>
+                        <a href="/list/<%= i %>" class="<%= i === currentPage ? 'active' : '' %>">
+                            <%= i %>
+                        </a>
+                    <% } %>
+                </div>
+</body>
+
+</html>
