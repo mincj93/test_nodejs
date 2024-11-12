@@ -6,11 +6,13 @@ const { MongoClient, ObjectId } = require('mongodb');
 const mongoose = require('mongoose');
 const methodOverride = require('method-override') // 메소드 요청 방법 변경 모듈
 const bcrypt = require('bcryptjs')
+require('dotenv').config() 
 
 // 로그인 관련 모듈 3개. (회원인증)
 const session = require('express-session')
 const passport = require('passport')
 const LocalStrategy = require('passport-local')
+
 
 // ------------------------------------------------------------------- 
 // 기본 정의
@@ -79,11 +81,10 @@ passport.deserializeUser((user, done) => {
 
 
 let db;
-const id = encodeURIComponent("mincj93");
-const pw = encodeURIComponent("AlsCkd!@34");
 
-const url = `mongodb+srv://${id}:${pw}@cluster0.xuzu2.mongodb.net/forum?retryWrites=true&w=majority&appName=Cluster0`
-MongoClient.connect(url, {
+// const url = `mongodb+srv://${id}:${pw}@cluster0.xuzu2.mongodb.net/forum?retryWrites=true&w=majority&appName=Cluster0`
+
+MongoClient.connect(process.env.DB_URL, {
     useNewUrlParser: true,
     useUnifiedTopology: true,
     tlsAllowInvalidHostnames: true,
