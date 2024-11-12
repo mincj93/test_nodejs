@@ -3,10 +3,10 @@
 const dayjs = require('dayjs');
 const express = require('express');
 const { MongoClient, ObjectId } = require('mongodb');
-const mongoose = require('mongoose');
+const MongoStore = require('connect-mongo')
 const methodOverride = require('method-override') // 메소드 요청 방법 변경 모듈
 const bcrypt = require('bcryptjs')
-require('dotenv').config() 
+require('dotenv').config()
 
 // 로그인 관련 모듈 3개. (회원인증)
 const session = require('express-session')
@@ -27,19 +27,30 @@ app.use(express.json())
 app.use(express.urlencoded({ extended: true }))
 app.use(methodOverride('_method'))
 
+// 미들웨어장착
+// app.use(myFunc) // 하단에 있는 모든 API에서 myFunc 를 미들웨어로 실행시킨 후 api 로직을 실행한다.
+app.use('/board',myFunc) // 하단에 있는 /list 주소 요청시에만 myFunc 를 미들웨어로 실행시킨 후 api 로직을 실행한다.
+
 // 회원인증에 쓸 모듈 아래 3개 순서도 중요함
 app.use(passport.initialize())
 app.use(session({
     secret: '1234', // 개별 비번 잘 넣어주면 됩니다. 세션문자열같은거 암호화할 때 쓰는데 긴게 좋습니다. 털리면 인생 끝남
     resave: false, // 유저가 요청날릴 때 마다 session데이터를 다시 갱신할건지 여부 (false 추천)
-    saveUninitialized: false // 유저가 로그인 안해도세션을 저장해둘지 여부 (false 추천)
+    saveUninitialized: false, // 유저가 로그인 안해도세션을 저장해둘지 여부 (false 추천)
+    cookie: { maxAge: 60 * 60 * 1000 },
+    store: MongoStore.create({
+        mongoUrl: process.env.DB_URL,
+        dbName: 'forum'
+    })
 }))
-app.use(passport.session({
-    secret: '어쩌구',
-    resave: false,
-    saveUninitialized: false,
-    cookie: { maxAge: 60 * 60 * 1000 }
-}))
+app.use(passport.session(
+    // {
+    //     secret: '어쩌구',
+    //     resave: false,
+    //     saveUninitialized: false,
+    //     cookie: { maxAge: 60 * 60 * 1000 }
+    // }
+))
 
 // passport 라이브러리 설정
 // 이 코드 하단에 API들을 만들어야 그 API들은 로그인관련 기능들이 잘 작동합니다.
@@ -52,7 +63,7 @@ passport.use(new LocalStrategy(async (입력한아이디, 입력한비번, cb) =
         return cb(null, false, { message: '아이디 DB에 없음' })
     }
     // await bcrypt.compare(입력값,  조회된 hash값) 이렇게 하면 조회된hash값과 입력값을 hash로 변환해 비교해준다.
-    await bcrypt.compare(입력한비번,  result.password)
+    await bcrypt.compare(입력한비번, result.password)
     if (result.password == 입력한비번) {
         return cb(null, result)
     } else {
@@ -92,7 +103,7 @@ MongoClient.connect(process.env.DB_URL, {
 }).then((client) => {
     console.log('데이터베이스 연결 성공');
     db = client.db('forum')
-    app.listen(8080, () => {
+    app.listen(process.env.PORT, () => {
         console.log('http://localhost:8080 에서 서버 실행중')
     })
 }).catch((err) => {
@@ -100,33 +111,40 @@ MongoClient.connect(process.env.DB_URL, {
 })
 
 // -------------------------------------------------------------------
+// 미들웨어
+
+function myFunc(req, res, next) {
+    lg('미들웨어 myFunc 함수');
+    checkLogin(req, res, next)
+}
+
+
+function checkLogin(req, res, next) {
+    lg('미들웨어 checkLogin 함수', req.user);
+    if (req.user == undefined || req.user == '') {
+        lg(true)
+        res.redirect('/login');
+    } else {
+        lg(false)
+        next()
+    }
+
+}
+// -------------------------------------------------------------------
 // get 방식 요청들
 app.get('/', async (req, res) => {
+
     // let result = await db.collection('post').find().toArray()
     // res.render('list.ejs', { 글목록: result })
-    res.redirect(`/list/${1}`);
-})
-app.get('/main', (req, res) => {
-    res.sendFile(__dirname + "/index.html")
-})
-app.get('/pageOne', (req, res) => {
-    res.sendFile(__dirname + "/pages/pageOne.html")
-})
-app.get('/pageTwo', (req, res) => {
-    res.sendFile(__dirname + "/pages/pageTwo.html")
-})
-app.get('/news', () => {
-    db.collection('post').insertOne({ title: 'testtest' });
-})
-app.get('/test', (req, res) => {
-    res.send('테스트입니다.')
+    lg('session 활성화 확인 req.user == ', req?.user)
+    res.redirect(`/board/list/${1}`);
 })
 
-app.get('/list', async (req, res) => {
-    res.redirect(`/list/${1}`);
+app.get('/board/list', async (req, res) => {
+    res.redirect(`/board/list/${1}`);
 });
 
-app.get('/list/:listId', async (req, res) => {
+app.get('/board/list/:listId', async (req, res) => {
 
     let result = await db.collection('post').find()
         .skip((req.params.listId - 1) * 2).limit(2).toArray()
@@ -186,6 +204,16 @@ app.get('/login', (req, res) => {
     res.render('login.ejs')
 })
 
+app.get('/logout', (req, res) => {
+    req.logout();
+    req.session.destroy((err) => {
+        if (err) {
+            console.error('Error destroying session:', err);
+        }
+        res.redirect('/'); // 로그아웃 후 이동할 페이지
+    });
+});
+
 app.get('/register', (요청, 응답) => {
     응답.render('register.ejs')
 })
@@ -223,31 +251,15 @@ app.post('/edit/:id', async (req, res) => {
     }
 })
 
-
 app.post('/addtc', async (req, res) => {
-    if (req.body.title == '') {
-        lg('title 없음')
-        return;
-    }
-    if (req.body.content == '') {
-        lg('content 없음')
-        return;
-    }
-
-
     try {
-        let insertData = {};
-        const bodyData = req.body;
-        insertData = { title: bodyData.title, content: bodyData.content };
-        await db.collection('testCollection').insertOne(insertData)
-        res.redirect('/write')
+        // ... (기존 코드)
+        res.redirect('/write');
     } catch (error) {
-
-        res.send('testCollection')
+        console.error(error);
+        res.status(500).send('서버 에러');
     }
-
-
-})
+});
 
 app.post('/login', async (req, res, next) => {
     // 제출한아이디/비번이 DB에 있는거랑 일치하는지 확인하고 세션생성
