@@ -5,7 +5,7 @@ const express = require('express');
 const { MongoClient, ObjectId } = require('mongodb');
 const mongoose = require('mongoose');
 const methodOverride = require('method-override') // 메소드 요청 방법 변경 모듈
-const bcrypt = require('bcrypt')
+const bcrypt = require('bcryptjs')
 
 // 로그인 관련 모듈 3개. (회원인증)
 const session = require('express-session')
