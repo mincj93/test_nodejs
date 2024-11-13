@@ -19,6 +19,23 @@ const LocalStrategy = require('passport-local')
 const app = express();
 const lg = console.log;
 
+// -------------------------------------------------------------------
+// 미들웨어
+
+const myFunc = (req, res, next) => {
+    lg('미들웨어 myFunc 함수 req = ', req.user);
+    next();
+}
+
+function checkLogin(요청, 응답, next) {
+    if (요청.user) {
+        next()
+    } else {
+        응답.send('로그인안했는데요?')
+    }
+}
+
+
 // ------------------------------------------------------------------- 
 // express 정의
 app.set('view engine', 'ejs')
@@ -29,7 +46,7 @@ app.use(methodOverride('_method'))
 
 // 미들웨어장착
 // app.use(myFunc) // 하단에 있는 모든 API에서 myFunc 를 미들웨어로 실행시킨 후 api 로직을 실행한다.
-app.use('/board',myFunc) // 하단에 있는 /list 주소 요청시에만 myFunc 를 미들웨어로 실행시킨 후 api 로직을 실행한다.
+app.use('/board', checkLogin) // 하단에 있는 /list 주소 요청시에만 myFunc 를 미들웨어로 실행시킨 후 api 로직을 실행한다.
 
 // 회원인증에 쓸 모듈 아래 3개 순서도 중요함
 app.use(passport.initialize())
@@ -81,15 +98,15 @@ passport.serializeUser((user, done) => {
 })
 
 // 로그인 유지되고 있는지 여부를 판단
-passport.deserializeUser((user, done) => {
-    lg("deserializeUser user == ", user)
+passport.deserializeUser(async (user, done) => {
+    let result = await db.collection('user_account').findOne({ _id: new ObjectId(user.id) })
+    delete result.password
     process.nextTick(() => {
-        return done(null, user)
+        return done(null, result)
     })
     //저가 요청날릴 때 마다 쿠키에 뭐가 있으면 그걸 까서 세션데이터랑 비교해보고 
     //별 이상이 없으면 현재 로그인된 유저정보를 모든 API의 "요청.user"에 담아줍니다
 })
-
 
 let db;
 
@@ -110,26 +127,7 @@ MongoClient.connect(process.env.DB_URL, {
     console.log('데이터베이스 연결 실패', err);
 })
 
-// -------------------------------------------------------------------
-// 미들웨어
 
-function myFunc(req, res, next) {
-    lg('미들웨어 myFunc 함수');
-    checkLogin(req, res, next)
-}
-
-
-function checkLogin(req, res, next) {
-    lg('미들웨어 checkLogin 함수', req.user);
-    if (req.user == undefined || req.user == '') {
-        lg(true)
-        res.redirect('/login');
-    } else {
-        lg(false)
-        next()
-    }
-
-}
 // -------------------------------------------------------------------
 // get 방식 요청들
 app.get('/', async (req, res) => {
@@ -137,10 +135,11 @@ app.get('/', async (req, res) => {
     // let result = await db.collection('post').find().toArray()
     // res.render('list.ejs', { 글목록: result })
     lg('session 활성화 확인 req.user == ', req?.user)
-    res.redirect(`/board/list/${1}`);
+    res.send('하이요');
 })
 
 app.get('/board/list', async (req, res) => {
+    lg('/board/list 에서 req.user 찍기 == ', req.user.username)
     res.redirect(`/board/list/${1}`);
 });
 
